@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: nexuslab-ctf
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: free
+    healthCheckPath: /
+    autoDeploy: true

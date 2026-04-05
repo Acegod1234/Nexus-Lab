@@ -1,0 +1,12 @@
+Options -Indexes
+DirectoryIndex index.php
+
+# Prevent access to common.php directly
+<Files "common.php">
+    Require all denied
+</Files>
+
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ index.php [QSA,L]
