@@ -10,10 +10,12 @@ RUN apt-get update && apt-get install -y \
 # Enable Apache mod_rewrite
 RUN a2enmod rewrite
 
-# Set working directory
-WORKDIR /var/www/html
+# Copy entrypoint first to root, then copy everything else
+COPY entrypoint.sh /entrypoint.sh
+RUN chmod +x /entrypoint.sh
 
-# Copy application files (excluding entrypoint — copied separately for clarity)
+# Set working directory and copy app files
+WORKDIR /var/www/html
 COPY . /var/www/html/
 
 # Apply Apache config
@@ -32,9 +34,6 @@ RUN mkdir -p /var/www/html/public/uploads \
 RUN printf 'softwarica_ctf{+#1$_1$_+#3_f|@8_y0u_w3R3_|00k1n9_f0r}' > /var/secrets/.flag_db9f2a \
     && chmod 644 /var/secrets/.flag_db9f2a \
     && chown www-data:www-data /var/secrets/.flag_db9f2a
-
-# Make entrypoint executable
-RUN chmod +x /entrypoint.sh
 
 EXPOSE 80
 
