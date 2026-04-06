@@ -38,15 +38,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['escalation_token'])) 
 
 $role = get_role();
 
-// Flag is only shown to administrators
+// Flag is NOT served here — players must use LFI to retrieve it
 $flag_content = '';
-if (is_admin()) {
-    if (file_exists(FLAG_PATH)) {
-        $flag_content = trim(file_get_contents(FLAG_PATH));
-    } else {
-        $flag_content = '[ERROR: Flag file not found at expected path]';
-    }
-}
 
 $db = get_db();
 $users = [];
@@ -102,15 +95,11 @@ while ($row = $res->fetchArray(SQLITE3_ASSOC)) {
   .panel-head { padding:14px 20px; border-bottom:1px solid var(--border); background:var(--panel2); font-family:'Share Tech Mono',monospace; font-size:11px; color:var(--text2); letter-spacing:2px; }
   .panel-body { padding:24px; }
 
-  /* Access denied */
-  .access-denied {
-    text-align:center; padding:60px 20px;
-  }
+  .access-denied { text-align:center; padding:60px 20px; }
   .access-denied .lock-icon { margin:0 auto 24px; width:64px; height:64px; opacity:0.4; }
   .access-denied h2 { font-family:'Orbitron',monospace; font-size:18px; letter-spacing:3px; color:var(--danger); margin-bottom:10px; }
   .access-denied p { font-family:'Share Tech Mono',monospace; font-size:12px; color:var(--text3); margin-bottom:30px; letter-spacing:1px; }
 
-  /* Escalation form */
   .escalate-form { max-width:480px; margin:0 auto; }
   .field-label { font-family:'Share Tech Mono',monospace; font-size:10px; color:var(--text3); letter-spacing:2px; margin-bottom:8px; display:block; }
   .token-input {
@@ -133,27 +122,23 @@ while ($row = $res->fetchArray(SQLITE3_ASSOC)) {
   .msg.warn { background:rgba(255,184,0,0.08); border:1px solid rgba(255,184,0,0.25); color:var(--warn); }
   .msg.error { background:rgba(255,56,96,0.08); border:1px solid rgba(255,56,96,0.25); color:var(--danger); }
 
-  /* Flag reveal */
   .flag-container {
     background:#010810; border:2px solid var(--accent3); border-radius:6px;
     padding:24px; text-align:center; margin-bottom:24px;
-    box-shadow:0 0 30px rgba(0,255,136,0.15);
   }
-  .flag-label { font-family:'Share Tech Mono',monospace; font-size:10px; color:var(--accent3); letter-spacing:3px; margin-bottom:14px; }
+  .flag-label { font-family:'Share Tech Mono',monospace; font-size:10px; letter-spacing:3px; margin-bottom:14px; }
   .flag-value {
-    font-family:'Share Tech Mono',monospace; font-size:16px; color:#fff;
+    font-family:'Share Tech Mono',monospace; color:#fff;
     background:rgba(0,255,136,0.08); border:1px solid rgba(0,255,136,0.2);
     padding:14px 20px; border-radius:4px; word-break:break-all; letter-spacing:1px;
   }
-  .flag-congrats { font-family:'Orbitron',monospace; font-size:13px; color:var(--accent3); margin-top:14px; letter-spacing:3px; }
+  .flag-congrats { font-family:'Orbitron',monospace; font-size:13px; margin-top:14px; letter-spacing:3px; }
 
-  /* Users table */
   table { width:100%; border-collapse:collapse; }
   th { font-family:'Share Tech Mono',monospace; font-size:10px; letter-spacing:2px; color:var(--text3); padding:10px 16px; text-align:left; border-bottom:1px solid var(--border); background:rgba(0,5,10,0.3); }
   td { padding:12px 16px; border-bottom:1px solid rgba(14,58,92,0.4); font-size:13px; }
   tr:last-child td { border-bottom:none; }
   tr:hover td { background:rgba(0,60,100,0.08); }
-  .td-role { font-family:'Share Tech Mono',monospace; font-size:11px; }
 </style>
 </head>
 <body>
@@ -183,7 +168,6 @@ while ($row = $res->fetchArray(SQLITE3_ASSOC)) {
   <?php endif; ?>
 
   <?php if (!is_operator() && !is_admin()): ?>
-  <!-- Access denied — but show escalation form -->
   <div class="panel">
     <div class="panel-head">🔒 ACCESS DENIED — PRIVILEGE ESCALATION REQUIRED</div>
     <div class="panel-body">
@@ -208,7 +192,6 @@ while ($row = $res->fetchArray(SQLITE3_ASSOC)) {
   </div>
 
   <?php else: ?>
-  <!-- Escalation form always available for further escalation -->
   <?php if (!is_admin()): ?>
   <div class="panel">
     <div class="panel-head">⬆ FURTHER PRIVILEGE ESCALATION</div>
@@ -221,16 +204,19 @@ while ($row = $res->fetchArray(SQLITE3_ASSOC)) {
   </div>
   <?php endif; ?>
 
-  <!-- Flag revealed for admin -->
-  <?php if (is_admin() && $flag_content): ?>
-  <div class="flag-container">
-    <div class="flag-label">// CLASSIFIED FLAG RETRIEVED FROM SECURE STORE //</div>
-    <div class="flag-value"><?= h($flag_content) ?></div>
-    <div class="flag-congrats">ACCESS GRANTED — MISSION COMPLETE</div>
+  <?php if (is_admin()): ?>
+  <div class="flag-container" style="border-color:var(--warn);box-shadow:0 0 30px rgba(255,184,0,0.1);">
+    <div class="flag-label" style="color:var(--warn);">// ADMINISTRATOR ACCESS GRANTED — CLASSIFIED ASSET LOCATED //</div>
+    <div class="flag-value" style="font-size:13px;color:var(--warn);">
+      Sensitive asset detected at secure storage path.<br><br>
+      Path: <span style="color:#fff">/var/secrets/.flag_db9f2a</span><br><br>
+      Direct read access is restricted to system processes only.<br>
+      Use available platform tools to retrieve the asset contents.
+    </div>
+    <div class="flag-congrats" style="color:var(--warn);">ELEVATION COMPLETE — RETRIEVE THE ASSET TO FINISH</div>
   </div>
   <?php endif; ?>
 
-  <!-- User management -->
   <div class="panel">
     <div class="panel-head">👥 USER MANAGEMENT</div>
     <div class="panel-body" style="padding:0">
@@ -243,7 +229,7 @@ while ($row = $res->fetchArray(SQLITE3_ASSOC)) {
           <tr>
             <td style="font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--text3)"><?= h((string)$u['id']) ?></td>
             <td><?= h($u['username']) ?></td>
-            <td class="td-role" style="color:var(--accent)"><?= h($u['role']) ?></td>
+            <td style="color:var(--accent)"><?= h($u['role']) ?></td>
             <td style="color:var(--text2)"><?= h($u['email']) ?></td>
             <td style="font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--text3)"><?= h($u['created_at']) ?></td>
           </tr>
