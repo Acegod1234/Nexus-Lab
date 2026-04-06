@@ -10,7 +10,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['escalation_token'])) 
     $token = trim($_POST['escalation_token']);
     $db = get_db();
 
-    // Check the token against system_tokens table
     $stmt = $db->prepare("SELECT privilege_level FROM system_tokens WHERE token_value = :t");
     $stmt->bindValue(':t', $token, SQLITE3_TEXT);
     $res = $stmt->execute();
@@ -40,13 +39,6 @@ $role = get_role();
 
 // Flag is NOT served here — players must use LFI to retrieve it
 $flag_content = '';
-
-$db = get_db();
-$users = [];
-$res = $db->query("SELECT id, username, role, email, created_at FROM users");
-while ($row = $res->fetchArray(SQLITE3_ASSOC)) {
-    $users[] = $row;
-}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -98,7 +90,7 @@ while ($row = $res->fetchArray(SQLITE3_ASSOC)) {
   .access-denied { text-align:center; padding:60px 20px; }
   .access-denied .lock-icon { margin:0 auto 24px; width:64px; height:64px; opacity:0.4; }
   .access-denied h2 { font-family:'Orbitron',monospace; font-size:18px; letter-spacing:3px; color:var(--danger); margin-bottom:10px; }
-  .access-denied p { font-family:'Share Tech Mono',monospace; font-size:12px; color:var(--text3); margin-bottom:30px; letter-spacing:1px; }
+  .access-denied p { font-family:'Share Tech Mono',monospace; font-size:12px; color:var(--text3); margin-bottom:30px; letter-spacing:1px; line-height:1.8; }
 
   .escalate-form { max-width:480px; margin:0 auto; }
   .field-label { font-family:'Share Tech Mono',monospace; font-size:10px; color:var(--text3); letter-spacing:2px; margin-bottom:8px; display:block; }
@@ -123,22 +115,17 @@ while ($row = $res->fetchArray(SQLITE3_ASSOC)) {
   .msg.error { background:rgba(255,56,96,0.08); border:1px solid rgba(255,56,96,0.25); color:var(--danger); }
 
   .flag-container {
-    background:#010810; border:2px solid var(--accent3); border-radius:6px;
+    background:#010810; border:2px solid var(--warn); border-radius:6px;
     padding:24px; text-align:center; margin-bottom:24px;
+    box-shadow:0 0 30px rgba(255,184,0,0.1);
   }
-  .flag-label { font-family:'Share Tech Mono',monospace; font-size:10px; letter-spacing:3px; margin-bottom:14px; }
+  .flag-label { font-family:'Share Tech Mono',monospace; font-size:10px; color:var(--warn); letter-spacing:3px; margin-bottom:14px; }
   .flag-value {
-    font-family:'Share Tech Mono',monospace; color:#fff;
-    background:rgba(0,255,136,0.08); border:1px solid rgba(0,255,136,0.2);
-    padding:14px 20px; border-radius:4px; word-break:break-all; letter-spacing:1px;
+    font-family:'Share Tech Mono',monospace; font-size:13px; color:var(--warn);
+    background:rgba(255,184,0,0.05); border:1px solid rgba(255,184,0,0.2);
+    padding:14px 20px; border-radius:4px; word-break:break-all; letter-spacing:1px; line-height:1.9;
   }
-  .flag-congrats { font-family:'Orbitron',monospace; font-size:13px; margin-top:14px; letter-spacing:3px; }
-
-  table { width:100%; border-collapse:collapse; }
-  th { font-family:'Share Tech Mono',monospace; font-size:10px; letter-spacing:2px; color:var(--text3); padding:10px 16px; text-align:left; border-bottom:1px solid var(--border); background:rgba(0,5,10,0.3); }
-  td { padding:12px 16px; border-bottom:1px solid rgba(14,58,92,0.4); font-size:13px; }
-  tr:last-child td { border-bottom:none; }
-  tr:hover td { background:rgba(0,60,100,0.08); }
+  .flag-congrats { font-family:'Orbitron',monospace; font-size:13px; color:var(--warn); margin-top:14px; letter-spacing:3px; }
 </style>
 </head>
 <body>
@@ -147,7 +134,9 @@ while ($row = $res->fetchArray(SQLITE3_ASSOC)) {
   <div class="nav-links">
     <a href="dashboard.php" class="nav-link">DASHBOARD</a>
     <a href="products.php" class="nav-link">PRODUCTS</a>
+    <?php if (is_admin()): ?>
     <a href="upload.php" class="nav-link">UPLOAD</a>
+    <?php endif; ?>
     <a href="admin.php" class="nav-link active">ADMIN PANEL</a>
   </div>
   <div class="nav-user">
@@ -181,7 +170,7 @@ while ($row = $res->fetchArray(SQLITE3_ASSOC)) {
           </svg>
         </div>
         <h2>INSUFFICIENT CLEARANCE</h2>
-        <p>Your current role (<?= strtoupper(h($role)) ?>) does not have access to this area.<br>Submit a valid system escalation token to elevate privileges.</p>
+        <p>Your current role (<?= strtoupper(h($role)) ?>) does not have access to this area.<br>A valid system escalation token is required to proceed.</p>
         <form method="POST" action="admin.php" class="escalate-form">
           <label class="field-label" for="token">ESCALATION TOKEN</label>
           <input class="token-input" type="text" id="token" name="escalation_token" placeholder="NX-PRIV-xxxxxxxxxxxx" autocomplete="off">
@@ -192,6 +181,7 @@ while ($row = $res->fetchArray(SQLITE3_ASSOC)) {
   </div>
 
   <?php else: ?>
+
   <?php if (!is_admin()): ?>
   <div class="panel">
     <div class="panel-head">⬆ FURTHER PRIVILEGE ESCALATION</div>
@@ -205,39 +195,17 @@ while ($row = $res->fetchArray(SQLITE3_ASSOC)) {
   <?php endif; ?>
 
   <?php if (is_admin()): ?>
-  <div class="flag-container" style="border-color:var(--warn);box-shadow:0 0 30px rgba(255,184,0,0.1);">
-    <div class="flag-label" style="color:var(--warn);">// ADMINISTRATOR ACCESS GRANTED — CLASSIFIED ASSET LOCATED //</div>
-    <div class="flag-value" style="font-size:13px;color:var(--warn);">
+  <div class="flag-container">
+    <div class="flag-label">// ADMINISTRATOR ACCESS GRANTED — CLASSIFIED ASSET LOCATED //</div>
+    <div class="flag-value">
       Sensitive asset detected at secure storage path.<br><br>
       Path: <span style="color:#fff">/var/secrets/.flag_db9f2a</span><br><br>
       Direct read access is restricted to system processes only.<br>
       Use available platform tools to retrieve the asset contents.
     </div>
-    <div class="flag-congrats" style="color:var(--warn);">ELEVATION COMPLETE — RETRIEVE THE ASSET TO FINISH</div>
+    <div class="flag-congrats">ELEVATION COMPLETE — RETRIEVE THE ASSET TO FINISH</div>
   </div>
   <?php endif; ?>
-
-  <div class="panel">
-    <div class="panel-head">👥 USER MANAGEMENT</div>
-    <div class="panel-body" style="padding:0">
-      <table>
-        <thead>
-          <tr><th>ID</th><th>USERNAME</th><th>ROLE</th><th>EMAIL</th><th>CREATED</th></tr>
-        </thead>
-        <tbody>
-          <?php foreach ($users as $u): ?>
-          <tr>
-            <td style="font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--text3)"><?= h((string)$u['id']) ?></td>
-            <td><?= h($u['username']) ?></td>
-            <td style="color:var(--accent)"><?= h($u['role']) ?></td>
-            <td style="color:var(--text2)"><?= h($u['email']) ?></td>
-            <td style="font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--text3)"><?= h($u['created_at']) ?></td>
-          </tr>
-          <?php endforeach; ?>
-        </tbody>
-      </table>
-    </div>
-  </div>
 
   <?php endif; ?>
 </div>
