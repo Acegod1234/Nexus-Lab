@@ -1,6 +1,7 @@
 <?php
 require_once 'common.php';
 if (!is_logged_in()) redirect('index.php');
+if (!is_admin()) redirect('dashboard.php');
 
 $msg = '';
 $msg_type = '';
